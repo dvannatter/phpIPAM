@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 __author__ = 'michaelluich'
-author_email = 'mluich@stonesrose.com',
+author_email = 'mluich@stonesrose.com'
 
 import requests
 from requests.auth import HTTPBasicAuth
@@ -19,7 +19,7 @@ class phpIPAM(object):
         password: Login Password
     """
 
-    def __init__(self, server, app_id, username, password):
+    def __init__(self, server, app_id, username, password, verify=True):
         self.error = 0
         self.error_message = ""
         self.server = server
@@ -27,6 +27,7 @@ class phpIPAM(object):
         self.username = username
         self.password = password
         self.base = "%s/api/%s/" %(self.server,self.app_id)
+        self.verify = verify
         self.login()
 
 
@@ -34,9 +35,10 @@ class phpIPAM(object):
 
     """   Login to phpIPAM and get a token. """
     def login(self):
-        p = requests.post(self.base + 'user/', auth=HTTPBasicAuth(self.username, self.password))
+        p = requests.post(self.base + 'user/', auth=HTTPBasicAuth(self.username, self.password), verify=self.verify)
         # print the html returned or something more intelligent to see if it's a successful login page.
         if p.status_code != 200:
+            logging.error("phpipam.login: %s"%(self.base + 'user/'))
             logging.error("phpipam.login: Login Problem %s " %(p.status_code))
             logging.error(p.text)
             self.error=77
@@ -45,7 +47,7 @@ class phpIPAM(object):
         ticketJson = json.loads(p.text)
         self.token = ticketJson['data']['token']
         self.token_expires= ticketJson['data']['expires']
-        logging.info("phpipam.login: Sucessful Login to %s" %(self.server))
+        logging.info("phpipam.login: Successful Login to %s" %(self.server))
         logging.debug("phpipam.login: IPAM Ticket: %s" %(ticketJson['data']['token']))
         logging.debug("phpipam.login: IPAM Ticket expiration: %s" %(self.token_expires))
 
@@ -53,7 +55,7 @@ class phpIPAM(object):
     """ check if a ticket is still valid"""
     def ticket_check(self):
         headers = {'token': self.token}
-        p = requests.get(self.base + 'user/', headers=headers)
+        p = requests.get(self.base + 'user/', headers=headers, verify=self.verify)
         if p.status_code != 200:
             logging.error("phpipam.ticket_check: Invalid ticket relogging in")
             logging.error(p.text)
@@ -64,7 +66,7 @@ class phpIPAM(object):
     """ Although the ticket last 6 hours. You can extend the time """
     def ticket_extend(self):
         headers = {'token': self.token}
-        p = requests.patch(self.base + 'user/', headers=headers)
+        p = requests.patch(self.base + 'user/', headers=headers, verify=self.verify)
         logging.info("phpipam.ticket_extend: IPAM Ticket expiration: %s" % (self.token_expires))
 
 
@@ -73,7 +75,7 @@ class phpIPAM(object):
     """    Check the authorization of acontroller and get a list of methods"""
     def authorization(self,controller):
         headers = {'token': self.token}
-        p = requests.options(self.base+"%s/" %(controller), headers=headers)
+        p = requests.options(self.base+"%s/" %(controller), headers=headers, verify=self.verify)
         auth_json = json.loads(p.text)
 
         if p.status_code != 200:
@@ -99,7 +101,7 @@ class phpIPAM(object):
     """ Get a list of all sections"""
     def sections_get_all(self):
         headers = {'token': self.token}
-        p = requests.get(self.base + "sections/?links=false", headers=headers)
+        p = requests.get(self.base + "sections/?links=false", headers=headers, verify=self.verify)
         sections_get_all_json = json.loads(p.text)
 
         if p.status_code != 200:
@@ -124,7 +126,7 @@ class phpIPAM(object):
     """
     def sections_get_id(self, section):
         headers = {'token': self.token}
-        p = requests.get(self.base + "sections/%s/?links=false" % (section), headers=headers)
+        p = requests.get(self.base + "sections/%s/?links=false" % (section), headers=headers, verify=self.verify)
         sections_get_id_json = json.loads(p.text)
 
         if p.status_code != 200:
@@ -150,7 +152,7 @@ class phpIPAM(object):
     """
     def sections_get(self, section_id):
         headers = {'token': self.token}
-        p = requests.get(self.base + "sections/%s/?links=false" %(section_id), headers=headers)
+        p = requests.get(self.base + "sections/%s/?links=false" %(section_id), headers=headers, verify=self.verify)
         sections_get = json.loads(p.text)
 
         if p.status_code != 200:
@@ -176,7 +178,7 @@ class phpIPAM(object):
 
     def sections_get_subnets(self, section_id):
         headers = {'token': self.token}
-        p = requests.get(self.base + "sections/%s/subnets/?links=false" % (section_id), headers=headers)
+        p = requests.get(self.base + "sections/%s/subnets/?links=false" % (section_id), headers=headers, verify=self.verify)
         sections_get_subnets = json.loads(p.text)
 
         if p.status_code != 200:
@@ -205,7 +207,7 @@ class phpIPAM(object):
         }
         if masterSection != 0 : data['masterSection'] = masterSection
 
-        p = requests.post(self.base + "sections/", headers=headers, data=data)
+        p = requests.post(self.base + "sections/", headers=headers, data=data, verify=self.verify)
         sections_create = json.loads(p.text)
 
         if p.status_code != 201:
@@ -231,7 +233,7 @@ class phpIPAM(object):
      """
     def sections_delete(self, section_id,):
         headers = {'token': self.token}
-        p = requests.delete(self.base + "sections/%s/" %(section_id), headers=headers)
+        p = requests.delete(self.base + "sections/%s/" %(section_id), headers=headers, verify=self.verify)
         print p.text
         sections_delete = json.loads(p.text)
     
@@ -260,7 +262,7 @@ class phpIPAM(object):
 
     def subnet_get(self, subnet_id):
         headers = {'token': self.token}
-        p = requests.get(self.base + "subnets/%s/?links=false" % (subnet_id), headers=headers)
+        p = requests.get(self.base + "subnets/%s/?links=false" % (subnet_id), headers=headers, verify=self.verify)
         subnet_get = json.loads(p.text)
 
         if p.status_code != 200:
@@ -288,7 +290,7 @@ class phpIPAM(object):
 
     def subnet_search(self, subnet_id):
         headers = {'token': self.token}
-        p = requests.get(self.base + "subnets/cidr/%s/?links=false" % (subnet_id), headers=headers)
+        p = requests.get(self.base + "subnets/cidr/%s/?links=false" % (subnet_id), headers=headers, verify=self.verify)
         subnet_search = json.loads(p.text)
     
         if p.status_code != 200:
@@ -314,7 +316,7 @@ class phpIPAM(object):
 
     def subnet_all(self, subnet_id):
         headers = {'token': self.token}
-        p = requests.get(self.base + "subnets/%s/addresses/?links=false" % (subnet_id), headers=headers)
+        p = requests.get(self.base + "subnets/%s/addresses/?links=false" % (subnet_id), headers=headers, verify=self.verify)
         subnet_all = json.loads(p.text)
 
         if p.status_code != 200:
@@ -343,7 +345,7 @@ class phpIPAM(object):
     
     def subnet_first_available(self, subnet_id):
         headers = {'token': self.token}
-        p = requests.get(self.base + "subnets/%s/first_free/?links=false" % (subnet_id), headers=headers)
+        p = requests.get(self.base + "subnets/%s/first_free/?links=false" % (subnet_id), headers=headers, verify=self.verify)
         subnet_first_available = json.loads(p.text)
     
         if p.status_code != 200:
@@ -385,7 +387,7 @@ class phpIPAM(object):
             'masterSubnetId' : mastersubnetid,
             'nameserverId' : nameserverid
         }
-        p = requests.post(self.base + "subnets/", headers=headers, data=data)
+        p = requests.post(self.base + "subnets/", headers=headers, data=data, verify=self.verify)
         subnet_first_available = json.loads(p.text)
 
         if p.status_code != 201:
@@ -413,7 +415,7 @@ class phpIPAM(object):
     
     def subnet_delete(self, subnet_id, ):
         headers = {'token': self.token}
-        p = requests.delete(self.base + "subnets/%s/" % (subnet_id), headers=headers)
+        p = requests.delete(self.base + "subnets/%s/" % (subnet_id), headers=headers, verify=self.verify)
         print p.text
         subnets_delete = json.loads(p.text)
     
@@ -442,7 +444,7 @@ class phpIPAM(object):
 
     def address_get(self, address_id):
         headers = {'token': self.token}
-        p = requests.get(self.base + "addresses/%s/?links=false" % (address_id), headers=headers)
+        p = requests.get(self.base + "addresses/%s/?links=false" % (address_id), headers=headers, verify=self.verify)
         address_get = json.loads(p.text)
 
         if p.status_code != 200:
@@ -468,7 +470,7 @@ class phpIPAM(object):
 
     def address_search(self, address):
         headers = {'token': self.token}
-        p = requests.get(self.base + "addresses/search/%s/?links=false" % (address), headers=headers)
+        p = requests.get(self.base + "addresses/search/%s/?links=false" % (address), headers=headers, verify=self.verify)
         address_get = json.loads(p.text)
 
         if p.status_code != 200:
@@ -505,7 +507,7 @@ class phpIPAM(object):
             "is_gateway":is_gateway,
             "mac": mac
         }
-        p = requests.post(self.base + "addresses/", headers=headers, data=data)
+        p = requests.post(self.base + "addresses/", headers=headers, data=data, verify=self.verify)
         address_create = json.loads(p.text)
 
         if p.status_code != 201:
@@ -521,8 +523,42 @@ class phpIPAM(object):
             return self.error
 
         logging.info("phpipam.address_create: success %s" % (address_create['success']))
-        return address_create['data']
+        try:
+            return address_create['data']
+        except:
+            return 201, "Success"
+        
+    
+        
 
+    def address_delete(self, hostId):
+        headers = {'token': self.token}
+        data = {
+            'remove_dns':1
+        }
+        p = requests.delete(self.base + "addresses/%s/?remove_dns=1" %hostId, headers=headers, data=data, verify=self.verify)
+        logging.info("phpipam.address_delete: Deleting %s" % (hostId))
+        address_delete = json.loads(p.text)
+
+        if p.status_code != 200:
+            logging.error("phpipam.address_delete: Failure %s" % (p.status_code))
+            logging.error(address_delete)
+            self.error = p.status_code
+            self.error_message = address_delete['message']
+            return self.error, self.error_message
+
+        if not address_delete['success']:
+            logging.error("phpipam.address_delete: FAILURE: %s" % (address_delete['code']))
+            self.error = address_delete['code']
+            return self.error
+
+        logging.info("phpipam.address_delete: success %s" % (address_delete['success']))
+        try:
+            return address_delete['data']
+        except:
+            return 200, "Success"
+        
+        
     """ VLAN """
 
     """ Get Information about a specific vlan
@@ -533,7 +569,7 @@ class phpIPAM(object):
 
     def vlan_get(self, vlan_id):
         headers = {'token': self.token}
-        p = requests.get(self.base + "vlans/%s/?links=false" % (vlan_id), headers=headers)
+        p = requests.get(self.base + "vlans/%s/?links=false" % (vlan_id), headers=headers, verify=self.verify)
         vlan_get = json.loads(p.text)
 
         if p.status_code != 200:
@@ -562,7 +598,7 @@ class phpIPAM(object):
 
     def vlan_get_id(self, vlan_id):
         headers = {'token': self.token}
-        p = requests.get(self.base + "vlans/search/%s/?links=false" % (vlan_id), headers=headers)
+        p = requests.get(self.base + "vlans/search/%s/?links=false" % (vlan_id), headers=headers, verify=self.verify)
         vlan_get = json.loads(p.text)
 
         if p.status_code != 200:
@@ -590,7 +626,7 @@ class phpIPAM(object):
 
     def vlan_subnets(self, vlan_id):
         headers = {'token': self.token}
-        p = requests.get(self.base + "vlans/%s/subnets/?links=false" % (vlan_id), headers=headers)
+        p = requests.get(self.base + "vlans/%s/subnets/?links=false" % (vlan_id), headers=headers, verify=self.verify)
         print p.text
         vlan_subnets = json.loads(p.text)
 
@@ -625,7 +661,7 @@ class phpIPAM(object):
             'name' : name,
             'description' : description,
         }
-        p = requests.post(self.base + "vlans/", headers=headers, data=data)
+        p = requests.post(self.base + "vlans/", headers=headers, data=data, verify=self.verify)
         vlan_create = json.loads(p.text)
 
         if p.status_code != 201:
@@ -653,7 +689,7 @@ class phpIPAM(object):
     
     def vlan_delete(self, vlan_id, ):
         headers = {'token': self.token}
-        p = requests.delete(self.base + "vlans/%s/" % (vlan_id), headers=headers)
+        p = requests.delete(self.base + "vlans/%s/" % (vlan_id), headers=headers, verify=self.verify)
         print p.text
         vlans_delete = json.loads(p.text)
     
